@@ -1,6 +1,8 @@
 package com.droid.actuallibrary;
 
 import android.app.ProgressDialog;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
@@ -33,10 +35,15 @@ public class CreateAndUploadBackup {
     private static String mUserName;
     private static String mPassword;
 
+    private static String mRestoreString;
+
+    private static ProgressDialog mProgressDialog;
+
     public boolean CreateBackup(Context context, String json, String userName, String password, ProgressDialog progress){
 
         mUserName = userName;
         mPassword = password;
+        mProgressDialog = progress;
         finalObject = new JSONArray();
 
         try {
@@ -96,10 +103,51 @@ public class CreateAndUploadBackup {
         }
     }
 
-    public static boolean RestoreBackup(Context context){
+    public boolean RestoreBackup(Context context, String userName, String password, ProgressDialog progress){
 
+        try {
+            mProgressDialog = progress;
+            mUserName = userName;
+            mPassword = password;
 
-        return false;
+            RestorePost restore = new RestorePost();
+            restore.execute("");
+
+            try {
+                restore.wait();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
+            String decryptedString = EncryptionHelper.decryptIt(mRestoreString);
+
+            JSONArray array = new JSONArray(decryptedString);
+
+            for(int i = 0; i < array.length(); i++){
+
+                JSONObject object = array.getJSONObject(i);
+
+                String uri = object.getString("uri");
+                JSONArray columns = object.getJSONArray("ColumnNames");
+                JSONArray dataArray = object.getJSONArray("data");
+
+                ContentResolver cr = context.getContentResolver();
+                for(int j = 0; j < dataArray.length(); j++){
+                    ContentValues values = new ContentValues();
+                    JSONArray dataRow = dataArray.getJSONArray(j);
+                    for(int k = 0; k < dataRow.length(); k++ ){
+                        values.put(columns.getString(k), dataRow.getString(k));
+                    }
+
+                    cr.insert(Uri.parse(uri), values);
+                }
+            }
+
+            return true;
+        }catch(Exception ex){
+            ex.printStackTrace();
+            return false;
+        }
     }
 
     public String POST(String url){
@@ -147,7 +195,7 @@ public class CreateAndUploadBackup {
             return result;
 
         } catch (Exception e) {
-            Log.v("Getter", e.getLocalizedMessage());
+            Log.v("POST", e.getLocalizedMessage());
         }
 
         return result;
@@ -162,6 +210,7 @@ public class CreateAndUploadBackup {
         @Override
         protected void onPostExecute(String result) {
             if(result.equals("OK")){
+                mProgressDialog.dismiss();
                 return;
             }
         }
@@ -188,7 +237,12 @@ public class CreateAndUploadBackup {
         @Override
         protected void onPostExecute(String result) {
             if(result != null){
-                return;
+                try {
+                    JSONObject object = new JSONObject(result);
+                    mRestoreString = object.getString("Stream");
+                }catch(Exception ex){
+                    ex.printStackTrace();
+                }
             }
         }
     }
@@ -207,14 +261,6 @@ public class CreateAndUploadBackup {
 
             jsonObject.put("User", creds);
             jsonObject.put("ApplicationPackageID", "com.droid");
-
-            JSONObject blob = new JSONObject();
-            blob.put("Stream", encryptedString);
-            blob.put("Size", encryptedString.length());
-            blob.put("FileType", "text/plain");
-
-            jsonObject.put("BlobEntity", blob);
-
 
             json = jsonObject.toString();
 
