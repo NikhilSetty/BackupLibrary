@@ -11,6 +11,13 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+
 
 public class MainActivity extends ActionBarActivity {
 
@@ -19,6 +26,7 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
     }
 
     /*@Override
@@ -59,7 +67,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
-    public void showAllBirthdays(View view) {
+    public void showAllBirthdays(View view) throws UnsupportedEncodingException, JSONException {
         // Show all the birthdays sorted by friend's name
         String URL = "content://com.droid.backuplibrary.BirthdayProvider/friends";
         Uri friends = Uri.parse(URL);
@@ -76,6 +84,41 @@ public class MainActivity extends ActionBarActivity {
             } while (c.moveToNext());
             Toast.makeText(this, result, Toast.LENGTH_LONG).show();
         }
+        String s=GetJsonURI();
 
     }
+
+    public String GetJsonURI() throws JSONException, UnsupportedEncodingException {
+        String JsonURI = "";
+        ArrayList<String> col = new ArrayList<>();
+        String URL2 = "content://com.droid.backuplibrary.BirthdayProvider/friends";
+        Uri friends2 = Uri.parse(URL2);
+        Cursor c = getContentResolver().query(friends2, null, null, null, "name");
+        String result = "no content";
+        if (!c.moveToFirst()) {
+            Toast.makeText(getApplicationContext(), "no content", Toast.LENGTH_LONG).show();
+        } else {
+            do {
+                result = result + "\n" + c.getString(c.getColumnIndex(BirthProvider.NAME)) +
+                        " with id " + c.getString(c.getColumnIndex(BirthProvider.ID)) +
+                        " has birthday: " + c.getString(c.getColumnIndex(BirthProvider.BIRTHDAY));
+            } while (c.moveToNext());
+        }
+        col.add(BirthProvider.NAME);
+        col.add(BirthProvider.ID);
+        col.add(BirthProvider.BIRTHDAY);
+        JSONArray jarray = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("uri", URL2);
+        JSONArray insideobj = new JSONArray();
+        for (String item : col) {
+            insideobj.put(item);
+        }
+        jsonObject.put("ColumnNames", insideobj);
+        jarray.put(jsonObject);
+        JsonURI=jarray.toString();
+        return JsonURI;
+
+    }
+
 }

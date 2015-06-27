@@ -13,7 +13,15 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
+import org.apache.http.entity.StringEntity;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -42,7 +50,8 @@ public class BirthProvider extends ContentProvider {
 
     // maps content URI "patterns" to the integer values that were set above
     static final UriMatcher uriMatcher;
-    static{
+
+    static {
         uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
         uriMatcher.addURI(PROVIDER_NAME, "friends", FRIENDS);
         uriMatcher.addURI(PROVIDER_NAME, "friends/#", FRIENDS_ID);
@@ -80,7 +89,7 @@ public class BirthProvider extends ContentProvider {
             Log.w(DBHelper.class.getName(),
                     "Upgrading database from version " + oldVersion + " to "
                             + newVersion + ". Old data will be destroyed");
-            db.execSQL("DROP TABLE IF EXISTS " +  TABLE_NAME);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
             onCreate(db);
         }
 
@@ -94,7 +103,7 @@ public class BirthProvider extends ContentProvider {
         // permissions to be writable
         database = dbHelper.getWritableDatabase();
 
-        if(database == null)
+        if (database == null)
             return false;
         else
             return true;
@@ -114,12 +123,12 @@ public class BirthProvider extends ContentProvider {
                 queryBuilder.setProjectionMap(BirthMap);
                 break;
             case FRIENDS_ID:
-                queryBuilder.appendWhere( ID + "=" + uri.getLastPathSegment());
+                queryBuilder.appendWhere(ID + "=" + uri.getLastPathSegment());
                 break;
             default:
                 throw new IllegalArgumentException("Unknown URI " + uri);
         }
-        if (sortOrder == null || sortOrder == ""){
+        if (sortOrder == null || sortOrder == "") {
             // No sorting-> sort on names by default
             sortOrder = NAME;
         }
@@ -139,7 +148,7 @@ public class BirthProvider extends ContentProvider {
         long row = database.insert(TABLE_NAME, "", values);
 
         // If record is added successfully
-        if(row > 0) {
+        if (row > 0) {
             Uri newUri = ContentUris.withAppendedId(CONTENT_URI, row);
             getContext().getContentResolver().notifyChange(newUri, null);
             return newUri;
@@ -153,7 +162,7 @@ public class BirthProvider extends ContentProvider {
         // TODO Auto-generated method stub
         int count = 0;
 
-        switch (uriMatcher.match(uri)){
+        switch (uriMatcher.match(uri)) {
             case FRIENDS:
                 count = database.update(TABLE_NAME, values, selection, selectionArgs);
                 break;
@@ -164,7 +173,7 @@ public class BirthProvider extends ContentProvider {
                                 selection + ')' : ""), selectionArgs);
                 break;
             default:
-                throw new IllegalArgumentException("Unsupported URI " + uri );
+                throw new IllegalArgumentException("Unsupported URI " + uri);
         }
         getContext().getContentResolver().notifyChange(uri, null);
         return count;
@@ -175,14 +184,14 @@ public class BirthProvider extends ContentProvider {
         // TODO Auto-generated method stub
         int count = 0;
 
-        switch (uriMatcher.match(uri)){
+        switch (uriMatcher.match(uri)) {
             case FRIENDS:
                 // delete all the records of the table
                 count = database.delete(TABLE_NAME, selection, selectionArgs);
                 break;
             case FRIENDS_ID:
-                String id = uri.getLastPathSegment();	//gets the id
-                count = database.delete( TABLE_NAME, ID +  " = " + id +
+                String id = uri.getLastPathSegment();    //gets the id
+                count = database.delete(TABLE_NAME, ID + " = " + id +
                         (!TextUtils.isEmpty(selection) ? " AND (" +
                                 selection + ')' : ""), selectionArgs);
                 break;
@@ -199,7 +208,7 @@ public class BirthProvider extends ContentProvider {
     @Override
     public String getType(Uri uri) {
         // TODO Auto-generated method stub
-        switch (uriMatcher.match(uri)){
+        switch (uriMatcher.match(uri)) {
             // Get all friend-birthday records
             case FRIENDS:
                 return "vnd.android.cursor.dir/vnd.example.friends";
@@ -210,6 +219,7 @@ public class BirthProvider extends ContentProvider {
                 throw new IllegalArgumentException("Unsupported URI: " + uri);
         }
     }
+
 
 
 }
