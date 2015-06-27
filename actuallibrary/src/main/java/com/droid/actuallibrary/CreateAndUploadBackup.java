@@ -4,6 +4,7 @@ import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -29,7 +30,7 @@ import java.io.InputStreamReader;
  */
 public class CreateAndUploadBackup {
 
-    private static JSONArray finalObject;
+    private static JSONObject finalObject;
     private static String encryptedString;
 
     private static String mUserName;
@@ -44,10 +45,28 @@ public class CreateAndUploadBackup {
         mUserName = userName;
         mPassword = password;
         mProgressDialog = progress;
-        finalObject = new JSONArray();
+        finalObject = new JSONObject();
+        JSONArray finalContentObject = new JSONArray();
 
         try {
-            JSONArray array = (new JSONArray(json));
+            JSONObject mainObject = new JSONObject(json);
+
+            SharedPreferences prefs = context.getSharedPreferences("general_settings", Context.MODE_PRIVATE);
+            JSONArray spArray = mainObject.getJSONArray("Shared_pref");
+
+            JSONArray finalSPArray = new JSONArray();
+            for(int n = 0; n < spArray.length(); n++){
+                JSONObject temp = new JSONObject();
+                String value = prefs.getString(spArray.getString(n), null);
+                temp.put("Key", spArray.getString(n));
+                temp.put("Value", value);
+
+                finalSPArray.put(temp);
+            }
+
+            finalObject.put("SharedPreferences", finalSPArray);
+
+            JSONArray array = mainObject.getJSONArray("URI");
 
             for(int j = 0; j < array.length(); j++){
                 String uri = array.getJSONObject(j).get("uri").toString();
@@ -86,8 +105,10 @@ public class CreateAndUploadBackup {
 
                 object.put("data", dataArray);
 
-                finalObject.put(object);
+                finalContentObject.put(object);
             }
+
+            finalObject.put("ContentArray", finalContentObject);
 
             String finalJsonString = finalObject.toString();
 
@@ -121,7 +142,9 @@ public class CreateAndUploadBackup {
 
             String decryptedString = EncryptionHelper.decryptIt(mRestoreString);
 
-            JSONArray array = new JSONArray(decryptedString);
+            JSONObject nObject = new JSONObject(decryptedString);
+
+            JSONArray array = nObject.getJSONArray("ContentArray");
 
             for(int i = 0; i < array.length(); i++){
 
@@ -142,6 +165,18 @@ public class CreateAndUploadBackup {
                     cr.insert(Uri.parse(uri), values);
                 }
             }
+
+            final String PREFS_NAME="MyApp_settings";
+            SharedPreferences settings = context.getSharedPreferences(PREFS_NAME, context.MODE_PRIVATE);
+
+            JSONArray spArray = nObject.getJSONArray("SharedPreferences");
+            for(int q = 0; q < spArray.length(); q++){
+                SharedPreferences.Editor editor = settings.edit();
+                JSONObject temp = spArray.getJSONObject(q);
+                editor.putString(temp.getString("Key"), temp.getString("Value"));
+                editor.commit();
+            }
+
 
             return true;
         }catch(Exception ex){
@@ -238,8 +273,8 @@ public class CreateAndUploadBackup {
         protected void onPostExecute(String result) {
             if(result != null){
                 try {
-                    JSONObject object = new JSONObject(result);
-                    mRestoreString = object.getString("Stream");
+                    JSONArray object = new JSONArray(result);
+                    mRestoreString = object.getJSONObject(0).getString("Stream");
                 }catch(Exception ex){
                     ex.printStackTrace();
                 }
