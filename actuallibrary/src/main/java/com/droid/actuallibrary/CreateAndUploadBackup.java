@@ -132,7 +132,7 @@ public class CreateAndUploadBackup {
             mPassword = password;
 
             RestorePost restore = new RestorePost();
-            restore.execute("");
+            restore.execute("http://backup-restore.cfapps.io/api/v1/file/retrieve");
 
             try {
                 restore.wait();

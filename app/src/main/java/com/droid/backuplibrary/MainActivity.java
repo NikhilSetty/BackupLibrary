@@ -12,8 +12,10 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.droid.actuallibrary.CreateAndUploadBackup;
@@ -29,8 +31,12 @@ import java.util.ArrayList;
 public class MainActivity extends ActionBarActivity {
     Button btn_Backup,btn_Restore;
     ProgressDialog progressDialog;
-    public static String Json_to_send;
+    public static String Json_to_send,st;
     public String value_from_sharedpref;
+    ArrayList<String> shared_keys,listitems;
+    private ArrayAdapter<String> listAdapter ;
+    public ListView listView;
+
 
 
 
@@ -39,6 +45,9 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         final String PREFS_NAME="MyApp_settings";
         setContentView(R.layout.activity_main);
+        listView=(ListView)findViewById(R.id.listView);
+        listitems=new ArrayList<>();
+
         btn_Backup=(Button)findViewById(R.id.btn_Backup);
         btn_Restore=(Button)findViewById(R.id.btn_Restore);
 
@@ -49,10 +58,20 @@ public class MainActivity extends ActionBarActivity {
         // Writing data to SharedPreferences
         SharedPreferences.Editor editor = settings.edit();
         editor.putString("Shared_pref", "This value would be in Shared Preferences");
+        editor.putString("First_Shared_pref","first value");
+        editor.putString("Second_Shared_pref","second value");
+        editor.putString("Third_Shared_pref","third value");
+        shared_keys=new ArrayList<>();
+        shared_keys.add("First_Shared_pref");
+        shared_keys.add("Second_Shared_pref");
+        shared_keys.add("Third_Shared_pref");
+
+
         editor.commit();
 
         // Reading from SharedPreferences
-         value_from_sharedpref = settings.getString("Shared_pref", "");
+
+        value_from_sharedpref = settings.getString("Shared_pref", "");
         Toast.makeText(getApplicationContext(),value_from_sharedpref,Toast.LENGTH_LONG).show();
 
 
@@ -60,23 +79,12 @@ public class MainActivity extends ActionBarActivity {
         btn_Restore.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //Restore data here
-            }
-        });
-
-        btn_Backup.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
                 final EditText et_email,et_password;
-                Button btn_login;
+
                 LayoutInflater li = LayoutInflater.from(getApplicationContext());
                 View promptsView = li.inflate(R.layout.login_dialog, null);
                 et_email=(EditText)promptsView.findViewById(R.id.et_email);
                 et_password=(EditText)promptsView.findViewById(R.id.et_password);
-                //btn_login=(Button)promptsView.findViewById(R.id.btn_login);
-                final String email=et_email.getText().toString();
-                final String password=et_password.getText().toString();
-
                 final AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MainActivity.this);
                 alertDialogBuilder.setView(promptsView);
                 alertDialogBuilder.setMessage("Login!");
@@ -86,6 +94,8 @@ public class MainActivity extends ActionBarActivity {
 
                             @Override
                             public void onClick(DialogInterface arg0, int arg1) {
+                                final String email=et_email.getText().toString();
+                                final String password=et_password.getText().toString();
                                 if(et_email.getText().toString().equals("") || et_password.getText() == null){
                                     Toast.makeText(getApplicationContext(), "Please enter appropriately!", Toast.LENGTH_LONG).show();
                                 }
@@ -99,7 +109,72 @@ public class MainActivity extends ActionBarActivity {
 
 
                                     CreateAndUploadBackup backup=new CreateAndUploadBackup();
-                                    backup.CreateBackup(getApplicationContext(),Json_to_send,email,password,progressDialog);
+                                    backup.RestoreBackup(getApplicationContext(), email, password, progressDialog);
+                                    populatelistview();
+
+
+                                }
+                            }
+                        });
+                alertDialogBuilder.setNegativeButton("Cancel",
+                        new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+                AlertDialog alertDialog = alertDialogBuilder.create();
+                alertDialog.show();
+            }
+
+        });
+
+        btn_Backup.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final EditText et_email,et_password;
+                Button btn_login;
+                LayoutInflater li = LayoutInflater.from(getApplicationContext());
+                View promptsView = li.inflate(R.layout.login_dialog, null);
+                et_email=(EditText)promptsView.findViewById(R.id.et_email);
+                et_password=(EditText)promptsView.findViewById(R.id.et_password);
+                //btn_login=(Button)promptsView.findViewById(R.id.btn_login);
+                /*final String email=et_email.getText().toString();
+                final String password=et_password.getText().toString();*/
+
+                final AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MainActivity.this);
+                alertDialogBuilder.setView(promptsView);
+                alertDialogBuilder.setMessage("Login!");
+
+                alertDialogBuilder.setPositiveButton("Login",
+                        new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface arg0, int arg1) {
+                                final String email=et_email.getText().toString();
+                                final String password=et_password.getText().toString();
+                                if(et_email.getText().toString().equals("") || et_password.getText() == null){
+                                    Toast.makeText(getApplicationContext(), "Please enter appropriately!", Toast.LENGTH_LONG).show();
+                                }
+                                else{
+
+                                    progressDialog = new ProgressDialog(MainActivity.this);
+                                    progressDialog.setMessage("Attempting Login...");
+                                    progressDialog.setCancelable(false);
+                                    progressDialog.setIndeterminate(true);
+                                    progressDialog.show();
+                                    try {
+                                         st=GetJsonURI();
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    } catch (UnsupportedEncodingException e) {
+                                        e.printStackTrace();
+                                    }
+
+
+                                    CreateAndUploadBackup backup=new CreateAndUploadBackup();
+                                    backup.CreateBackup(getApplicationContext(), st ,email,password,progressDialog);
 
                                 }
                             }
@@ -152,6 +227,8 @@ public class MainActivity extends ActionBarActivity {
         int count = getContentResolver().delete(
                 friends, null, null);
         String countNum = "BackupLibrary: "+ count +" records are deleted.";
+        listitems.clear();
+        listAdapter.notifyDataSetChanged();
         Toast.makeText(getBaseContext(),
                 countNum, Toast.LENGTH_LONG).show();
 
@@ -173,6 +250,29 @@ public class MainActivity extends ActionBarActivity {
         Toast.makeText(getBaseContext(),
                 "BackupLibrary: " + uri.toString() + " inserted!", Toast.LENGTH_LONG).show();
     }
+    public void populatelistview() {
+        String URL = "content://com.droid.backuplibrary.BirthdayProvider/friends";
+        Uri friends = Uri.parse(URL);
+        Cursor c = getContentResolver().query(friends, null, null, null, "name");
+        String result = "BackupLibrary Results:";
+
+        if (!c.moveToFirst()) {
+            Toast.makeText(this, result + " no content yet!", Toast.LENGTH_LONG).show();
+        } else {
+            do {
+                listitems.add(c.getString(c.getColumnIndex(BirthProvider.NAME)));
+                /*result = result + "\n" + c.getString(c.getColumnIndex(BirthProvider.NAME)) +
+                        " with id " +  c.getString(c.getColumnIndex(BirthProvider.ID)) +
+                        " has birthday: " + c.getString(c.getColumnIndex(BirthProvider.BIRTHDAY));*/
+
+
+            } while (c.moveToNext());
+            Toast.makeText(this, result, Toast.LENGTH_LONG).show();
+            listAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, listitems);
+            listView.setAdapter(listAdapter);
+
+        }
+    }
 
 
     public void showAllBirthdays(View view) throws UnsupportedEncodingException, JSONException {
@@ -186,17 +286,25 @@ public class MainActivity extends ActionBarActivity {
             Toast.makeText(this, result+" no content yet!", Toast.LENGTH_LONG).show();
         }else{
             do{
-                result = result + "\n" + c.getString(c.getColumnIndex(BirthProvider.NAME)) +
+                listitems.add(c.getString(c.getColumnIndex(BirthProvider.NAME)));
+                /*result = result + "\n" + c.getString(c.getColumnIndex(BirthProvider.NAME)) +
                         " with id " +  c.getString(c.getColumnIndex(BirthProvider.ID)) +
-                        " has birthday: " + c.getString(c.getColumnIndex(BirthProvider.BIRTHDAY));
+                        " has birthday: " + c.getString(c.getColumnIndex(BirthProvider.BIRTHDAY));*/
+
+
             } while (c.moveToNext());
             Toast.makeText(this, result, Toast.LENGTH_LONG).show();
+            listAdapter=new ArrayAdapter<String>(MainActivity.this,android.R.layout.simple_list_item_1,listitems);
+            listView.setAdapter(listAdapter);
+
+
+
         }
-         Json_to_send=GetJsonURI();
+//         Json_to_send=GetJsonURI();
 
-        CreateAndUploadBackup uploadBackup = new CreateAndUploadBackup();
+//        CreateAndUploadBackup uploadBackup = new CreateAndUploadBackup();
 
-        uploadBackup.CreateBackup(getApplicationContext(), Json_to_send, "", "", null);
+        //uploadBackup.CreateBackup(getApplicationContext(), Json_to_send, "", "", null);
 
     }
 
@@ -221,6 +329,10 @@ public class MainActivity extends ActionBarActivity {
         col.add(BirthProvider.BIRTHDAY);
         JSONObject initial=new JSONObject();
         JSONArray jarray = new JSONArray();
+        JSONArray sharedkeys=new JSONArray();
+        for(String keys:shared_keys){
+            sharedkeys.put(keys);
+        }
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("uri", URL2);
         JSONArray insideobj = new JSONArray();
@@ -229,7 +341,7 @@ public class MainActivity extends ActionBarActivity {
         }
         jsonObject.put("ColumnNames", insideobj);
         jarray.put(jsonObject);
-        initial.put("Shared_pref",value_from_sharedpref);
+        initial.put("Shared_pref",sharedkeys);
         initial.put("URI",jarray);
         JsonURI=initial.toString();
         return JsonURI;

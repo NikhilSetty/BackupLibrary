@@ -65,4 +65,12 @@
         android:layout_below="@+id/btn_Backup"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/listView"
+        android:layout_alignRight="@+id/btn_Restore"
+        android:layout_alignEnd="@+id/btn_Restore"
+        android:layout_below="@+id/btn_Restore" />
 </RelativeLayout>
