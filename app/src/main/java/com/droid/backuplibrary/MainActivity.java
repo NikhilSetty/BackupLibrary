@@ -86,7 +86,9 @@ public class MainActivity extends ActionBarActivity {
         }
         String s=GetJsonURI();
 
-        CreateAndUploadBackup.CreateBackup(getApplicationContext(), s);
+        CreateAndUploadBackup uploadBackup = new CreateAndUploadBackup();
+
+        uploadBackup.CreateBackup(getApplicationContext(), s, "", "", null);
 
     }
 
