@@ -115,7 +115,7 @@ public class CreateAndUploadBackup {
             encryptedString = EncryptionHelper.encryptIt(finalJsonString);
 
             UploadPost post = new UploadPost();
-            post.execute("");
+            post.execute("http://backup-restore.cfapps.io/api/v1/file/upload");
 
             return true;
         }catch(Exception ex){
