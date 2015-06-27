@@ -1,11 +1,18 @@
 package com.droid.backuplibrary;
 
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -20,12 +27,113 @@ import java.util.ArrayList;
 
 
 public class MainActivity extends ActionBarActivity {
+    Button btn_Backup,btn_Restore;
+    ProgressDialog progressDialog;
+    public static String Json_to_send;
+    public String value_from_sharedpref;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        final String PREFS_NAME="MyApp_settings";
         setContentView(R.layout.activity_main);
+        btn_Backup=(Button)findViewById(R.id.btn_Backup);
+        btn_Restore=(Button)findViewById(R.id.btn_Restore);
+
+
+
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+
+        // Writing data to SharedPreferences
+        SharedPreferences.Editor editor = settings.edit();
+        editor.putString("Shared_pref", "This value would be in Shared Preferences");
+        editor.commit();
+
+        // Reading from SharedPreferences
+         value_from_sharedpref = settings.getString("Shared_pref", "");
+        Toast.makeText(getApplicationContext(),value_from_sharedpref,Toast.LENGTH_LONG).show();
+
+
+
+        btn_Restore.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //Restore data here
+            }
+        });
+
+        btn_Backup.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final EditText et_email,et_password;
+                Button btn_login;
+                LayoutInflater li = LayoutInflater.from(getApplicationContext());
+                View promptsView = li.inflate(R.layout.login_dialog, null);
+                et_email=(EditText)promptsView.findViewById(R.id.et_email);
+                et_password=(EditText)promptsView.findViewById(R.id.et_password);
+                //btn_login=(Button)promptsView.findViewById(R.id.btn_login);
+                final String email=et_email.getText().toString();
+                final String password=et_password.getText().toString();
+
+                final AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MainActivity.this);
+                alertDialogBuilder.setView(promptsView);
+                alertDialogBuilder.setMessage("Login!");
+
+                alertDialogBuilder.setPositiveButton("Login",
+                        new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface arg0, int arg1) {
+                                if(et_email.getText().toString().equals("") || et_password.getText() == null){
+                                    Toast.makeText(getApplicationContext(), "Please enter appropriately!", Toast.LENGTH_LONG).show();
+                                }
+                                else{
+
+                                    progressDialog = new ProgressDialog(MainActivity.this);
+                                    progressDialog.setMessage("Attempting Login...");
+                                    progressDialog.setCancelable(false);
+                                    progressDialog.setIndeterminate(true);
+                                    progressDialog.show();
+
+
+                                    CreateAndUploadBackup backup=new CreateAndUploadBackup();
+                                    backup.CreateBackup(getApplicationContext(),Json_to_send,email,password,progressDialog);
+
+                                }
+                            }
+                        });
+                alertDialogBuilder.setNegativeButton("Cancel",
+                        new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+
+
+
+                /*btn_login.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        progressDialog = new ProgressDialog(getApplicationContext());
+                        progressDialog.setMessage("Attempting Login...");
+                        progressDialog.setCancelable(false);
+                        progressDialog.setIndeterminate(true);
+
+                        CreateAndUploadBackup backup=new CreateAndUploadBackup();
+                        backup.CreateBackup(getApplicationContext(),Json_to_send,email,password,progressDialog);
+                    }
+                });*/
+                AlertDialog alertDialog = alertDialogBuilder.create();
+                alertDialog.show();
+
+
+            }
+        });
+
 
     }
 
@@ -84,11 +192,11 @@ public class MainActivity extends ActionBarActivity {
             } while (c.moveToNext());
             Toast.makeText(this, result, Toast.LENGTH_LONG).show();
         }
-        String s=GetJsonURI();
+         Json_to_send=GetJsonURI();
 
         CreateAndUploadBackup uploadBackup = new CreateAndUploadBackup();
 
-        uploadBackup.CreateBackup(getApplicationContext(), s, "", "", null);
+        uploadBackup.CreateBackup(getApplicationContext(), Json_to_send, "", "", null);
 
     }
 
@@ -111,6 +219,7 @@ public class MainActivity extends ActionBarActivity {
         col.add(BirthProvider.NAME);
         col.add(BirthProvider.ID);
         col.add(BirthProvider.BIRTHDAY);
+        JSONObject initial=new JSONObject();
         JSONArray jarray = new JSONArray();
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("uri", URL2);
@@ -120,7 +229,9 @@ public class MainActivity extends ActionBarActivity {
         }
         jsonObject.put("ColumnNames", insideobj);
         jarray.put(jsonObject);
-        JsonURI=jarray.toString();
+        initial.put("Shared_pref",value_from_sharedpref);
+        initial.put("URI",jarray);
+        JsonURI=initial.toString();
         return JsonURI;
 
     }
