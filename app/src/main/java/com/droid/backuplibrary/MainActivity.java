@@ -3,13 +3,13 @@ package com.droid.backuplibrary;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.support.v7.app.ActionBarActivity;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import com.droid.actuallibrary.CreateAndUploadBackup;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -85,6 +85,8 @@ public class MainActivity extends ActionBarActivity {
             Toast.makeText(this, result, Toast.LENGTH_LONG).show();
         }
         String s=GetJsonURI();
+
+        CreateAndUploadBackup.CreateBackup(getApplicationContext(), s);
 
     }
 
