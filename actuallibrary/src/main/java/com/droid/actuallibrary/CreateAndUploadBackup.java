@@ -37,8 +37,11 @@ public class CreateAndUploadBackup {
     private static String mPassword;
 
     private static String mRestoreString;
+    private static Context mContext;
 
     private static ProgressDialog mProgressDialog;
+
+    private static boolean responeObtained = false;
 
     public boolean CreateBackup(Context context, String json, String userName, String password, ProgressDialog progress){
 
@@ -51,7 +54,7 @@ public class CreateAndUploadBackup {
         try {
             JSONObject mainObject = new JSONObject(json);
 
-            SharedPreferences prefs = context.getSharedPreferences("general_settings", Context.MODE_PRIVATE);
+            SharedPreferences prefs = context.getSharedPreferences("MyApp_settings", Context.MODE_PRIVATE);
             JSONArray spArray = mainObject.getJSONArray("Shared_pref");
 
             JSONArray finalSPArray = new JSONArray();
@@ -115,7 +118,8 @@ public class CreateAndUploadBackup {
             encryptedString = EncryptionHelper.encryptIt(finalJsonString);
 
             UploadPost post = new UploadPost();
-            post.execute("http://backup-restore.cfapps.io/api/v1/file/upload");
+            //post.execute("http://backup-restore.cfapps.io/api/v1/file/upload");
+            post.execute("http://192.168.43.73:8080/api/v1/file/upload");
 
             return true;
         }catch(Exception ex){
@@ -124,59 +128,21 @@ public class CreateAndUploadBackup {
         }
     }
 
-    public boolean RestoreBackup(Context context, String userName, String password, ProgressDialog progress){
+    public synchronized boolean RestoreBackup(Context context, String userName, String password, ProgressDialog progress){
 
         try {
             mProgressDialog = progress;
             mUserName = userName;
             mPassword = password;
+            mContext = context;
 
             RestorePost restore = new RestorePost();
-            restore.execute("http://backup-restore.cfapps.io/api/v1/file/retrieve");
+  //          restore.execute("http://backup-restore.cfapps.io/api/v1/file/retrieve");
+            restore.execute("http://192.168.43.73:8080/api/v1/file/retrieve");
 
-            try {
-                restore.wait();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
 
-            String decryptedString = EncryptionHelper.decryptIt(mRestoreString);
-
-            JSONObject nObject = new JSONObject(decryptedString);
-
-            JSONArray array = nObject.getJSONArray("ContentArray");
-
-            for(int i = 0; i < array.length(); i++){
-
-                JSONObject object = array.getJSONObject(i);
-
-                String uri = object.getString("uri");
-                JSONArray columns = object.getJSONArray("ColumnNames");
-                JSONArray dataArray = object.getJSONArray("data");
-
-                ContentResolver cr = context.getContentResolver();
-                for(int j = 0; j < dataArray.length(); j++){
-                    ContentValues values = new ContentValues();
-                    JSONArray dataRow = dataArray.getJSONArray(j);
-                    for(int k = 0; k < dataRow.length(); k++ ){
-                        values.put(columns.getString(k), dataRow.getString(k));
-                    }
-
-                    cr.insert(Uri.parse(uri), values);
-                }
-            }
-
-            final String PREFS_NAME="MyApp_settings";
-            SharedPreferences settings = context.getSharedPreferences(PREFS_NAME, context.MODE_PRIVATE);
-
-            JSONArray spArray = nObject.getJSONArray("SharedPreferences");
-            for(int q = 0; q < spArray.length(); q++){
-                SharedPreferences.Editor editor = settings.edit();
-                JSONObject temp = spArray.getJSONObject(q);
-                editor.putString(temp.getString("Key"), temp.getString("Value"));
-                editor.commit();
-            }
-
+            BackgroundTasks tasks = new BackgroundTasks();
+            tasks.execute("");
 
             return true;
         }catch(Exception ex){
@@ -198,7 +164,7 @@ public class CreateAndUploadBackup {
             creds.put("Password" , mPassword);
 
             jsonObject.put("User", creds);
-            jsonObject.put("ApplicationPackageID", "com.droid");
+            jsonObject.put("ApplicationPackageID", "com");
 
             JSONObject blob = new JSONObject();
             blob.put("Stream", encryptedString);
@@ -214,9 +180,7 @@ public class CreateAndUploadBackup {
 
             httpPost.setEntity(se);
 
-            httpPost.setHeader("Accept", "application/json");
             httpPost.setHeader("Content-type", "application/json");
-
 
             HttpResponse httpResponse = httpclient.execute(httpPost);
 
@@ -231,6 +195,7 @@ public class CreateAndUploadBackup {
 
         } catch (Exception e) {
             Log.v("POST", e.getLocalizedMessage());
+            mProgressDialog.dismiss();
         }
 
         return result;
@@ -239,14 +204,15 @@ public class CreateAndUploadBackup {
     private class UploadPost extends AsyncTask<String, Void, String> {
         @Override
         protected String doInBackground(String... urls) {
+            Log.d("Debug", urls[0]);
             return POST(urls[0]);
         }
 
         @Override
         protected void onPostExecute(String result) {
+            Log.d("Debug", result);
             if(result.equals("OK")){
                 mProgressDialog.dismiss();
-                return;
             }
         }
     }
@@ -273,8 +239,10 @@ public class CreateAndUploadBackup {
         protected void onPostExecute(String result) {
             if(result != null){
                 try {
-                    JSONArray object = new JSONArray(result);
-                    mRestoreString = object.getJSONObject(0).getString("Stream");
+                    JSONObject object = new JSONObject(result);
+                    JSONObject temp = object.getJSONObject("BlobEntity");
+                    mRestoreString = temp.getString("Stream");
+                    responeObtained = true;
                 }catch(Exception ex){
                     ex.printStackTrace();
                 }
@@ -295,7 +263,7 @@ public class CreateAndUploadBackup {
             creds.put("Password" , mPassword);
 
             jsonObject.put("User", creds);
-            jsonObject.put("ApplicationPackageID", "com.droid");
+            jsonObject.put("ApplicationPackageID", "com");
 
             json = jsonObject.toString();
 
@@ -303,9 +271,7 @@ public class CreateAndUploadBackup {
 
             httpPost.setEntity(se);
 
-            httpPost.setHeader("Accept", "application/json");
             httpPost.setHeader("Content-type", "application/json");
-
 
             HttpResponse httpResponse = httpclient.execute(httpPost);
 
@@ -323,5 +289,61 @@ public class CreateAndUploadBackup {
         }
 
         return result;
+    }
+
+    private class BackgroundTasks extends AsyncTask<String, Void, String> {
+        @Override
+        protected String doInBackground(String... urls) {
+            while(!responeObtained){
+
+            }
+            return "";
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            try {
+                String decryptedString = EncryptionHelper.decryptIt(mRestoreString);
+
+                JSONObject nObject = new JSONObject(decryptedString);
+
+                JSONArray array = nObject.getJSONArray("ContentArray");
+
+                for (int i = 0; i < array.length(); i++) {
+
+                    JSONObject object = array.getJSONObject(i);
+
+                    String uri = object.getString("uri");
+                    JSONArray columns = object.getJSONArray("columnNames");
+                    JSONArray dataArray = object.getJSONArray("data");
+
+                    ContentResolver cr = mContext.getContentResolver();
+                    for (int j = 0; j < dataArray.length(); j++) {
+                        ContentValues values = new ContentValues();
+                        JSONArray dataRow = dataArray.getJSONArray(j);
+                        for (int k = 0; k < dataRow.length(); k++) {
+                            values.put(columns.getString(k), dataRow.getString(k));
+                        }
+
+                        cr.insert(Uri.parse(uri), values);
+                    }
+                }
+
+                final String PREFS_NAME = "MyApp_settings";
+                SharedPreferences settings = mContext.getSharedPreferences(PREFS_NAME, mContext.MODE_PRIVATE);
+
+                JSONArray spArray = nObject.getJSONArray("SharedPreferences");
+                for (int q = 0; q < spArray.length(); q++) {
+                    SharedPreferences.Editor editor = settings.edit();
+                    JSONObject temp = spArray.getJSONObject(q);
+                    editor.putString(temp.getString("Key"), temp.getString("Value"));
+                    editor.commit();
+                }
+                mProgressDialog.dismiss();
+            }catch(Exception e){
+                e.printStackTrace();
+                mProgressDialog.dismiss();
+            }
+        }
     }
 }

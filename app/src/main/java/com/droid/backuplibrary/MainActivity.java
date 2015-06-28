@@ -9,7 +9,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -316,7 +315,7 @@ public class MainActivity extends ActionBarActivity {
         Cursor c = getContentResolver().query(friends2, null, null, null, "name");
         String result = "no content";
         if (!c.moveToFirst()) {
-            Toast.makeText(getApplicationContext(), "no content", Toast.LENGTH_LONG).show();
+            //Toast.makeText(getApplicationContext(), "no content", Toast.LENGTH_LONG).show();
         } else {
             do {
                 result = result + "\n" + c.getString(c.getColumnIndex(BirthProvider.NAME)) +
